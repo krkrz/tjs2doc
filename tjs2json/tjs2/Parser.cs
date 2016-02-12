@@ -416,6 +416,7 @@ namespace TJS2 {
 				string line = rs.ReadLine();
 				line = Regex.Replace( line, "^[ \t]*\\*[ \t]*", "" ); // 行頭の * を取り除く
 				line = Regex.Replace( line, "^[ \t]*", "" ); // 行頭のスペースを取り除く
+				line = Regex.Replace( line, "-{4,}", "" ); // -の4回以上の繰り返しを取り除く
 				if( Regex.Match( line, "^@param" ).Success ) {
 					Match match;
 					if( ( match = Regex.Match( line, "^@param[ \t]*([^ \t]+)[ \t]+(.+)" ) ) != Match.Empty ) {
