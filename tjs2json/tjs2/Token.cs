@@ -136,6 +136,7 @@ namespace TJS2 {
 			T_SYMBOL = 386,
 			T_REGEXP = 387,
 			T_COMMENT = 388,
+			T_EVENT = 389,
 
 			// 特殊
 			T_CAST_INT = 512,	// ( int )
@@ -245,6 +246,7 @@ namespace TJS2 {
 			case T_RBRACE: return "}";
 			case T_CONTINUE: return "continue";
 			case T_FUNCTION: return "function";
+			case T_EVENT: return "event";
 			case T_DEBUGGER: return "debugger";
 			case T_DEFAULT: return "default";
 			case T_CASE: return "case";

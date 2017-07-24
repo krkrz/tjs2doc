@@ -70,6 +70,7 @@ namespace apijsontohtml {
 			Class,
 			Var,
 			Const,
+			Event,
 		}
 		public const string TYPE_ROOT = "root";
 		public const string TYPE_FUNCTION = "function";
@@ -78,12 +79,14 @@ namespace apijsontohtml {
 		public const string TYPE_VAR = "var";
 		public const string TYPE_CONST = "const";
 		public const string TYPE_UNKNOWN = "unknown";
+		public const string TYPE_EVENT = "event";
 
 		public NodeType Type {
 			get {
 				string name = TypeName;
 				if( TYPE_ROOT.Equals( name ) ) return NodeType.Root;
 				else if( TYPE_FUNCTION.Equals( name ) ) return NodeType.Function;
+				else if( TYPE_EVENT.Equals( name ) ) return NodeType.Event;
 				else if( TYPE_PROPERTY.Equals( name ) ) return NodeType.Property;
 				else if( TYPE_CLASS.Equals( name ) ) return NodeType.Class;
 				else if( TYPE_VAR.Equals( name ) ) return NodeType.Var;
@@ -138,7 +141,10 @@ namespace apijsontohtml {
 					}
 					break;
 				case NodeType.Function:
-					WriteFunctionHtml( owner );
+					WriteFunctionHtml( owner, false );
+					break;
+				case NodeType.Event:
+					WriteFunctionHtml( owner, true );
 					break;
 				case NodeType.Property:
 					WritePropertyHtml( owner );
@@ -288,6 +294,14 @@ namespace apijsontohtml {
 					writer.WriteLine( "<a class=\"jump\" href=\"" + "prop_"+ Name + "_" + n.Name + ".html\">" + n.Name + "</a> (" + removeReturn( n.Comment.Summary ) + " )<br />" );
 				}
 			}
+			writer.WriteLine( "</dd>" );
+			writer.WriteLine( "<dt>イベント</dt>" );
+			writer.WriteLine( "<dd>" );
+			foreach( ScriptNode n in Members ) {
+				if( n.Type == NodeType.Event ) {
+					writer.WriteLine( "<a class=\"jump\" href=\"" + "event_" + Name + "_" + n.Name + ".html\">" + n.Name + "</a> (" + removeReturn( n.Comment.Summary ) + " )<br />" );
+				}
+			}
 			if( Members.FindIndex( s => s.Type == NodeType.Const ) >= 0 ) {
 				writer.WriteLine( "</dd>" );
 				writer.WriteLine( "<dt>定数</dt>" );
@@ -326,8 +340,13 @@ namespace apijsontohtml {
 			writer.WriteLine( "</html>" );
 			writer.Close();
 		}
-		public void WriteFunctionHtml( string owner ) {
-			StreamWriter writer = new StreamWriter( "func_" + owner + "_" + Name + ".html", false, Encoding.UTF8 );
+		public void WriteFunctionHtml( string owner, bool ev = false ) {
+			StreamWriter writer;
+			if( ev ) {
+				writer = new StreamWriter( "event_" + owner + "_" + Name + ".html", false, Encoding.UTF8 );
+			} else {
+				writer = new StreamWriter( "func_" + owner + "_" + Name + ".html", false, Encoding.UTF8 );
+			}
 			WriteHtmlHeader( ref writer, Name + " - " + removeReturn(Comment.Summary) );
 			writer.WriteLine( "<body>");
 			writer.WriteLine( "<h1><span class=\"fheader\"><a name=\"top\" id=\"top\">" + owner + "." + Name + "</a></span></h1><div class=\"para\">" );
@@ -335,10 +354,17 @@ namespace apijsontohtml {
 			writer.WriteLine( "<dt>機能/意味</dt>" );
 			writer.WriteLine( "<dd>" + removeReturn(Comment.Summary) + "</dd>" );
 			writer.WriteLine( "<dt>タイプ</dt>" );
-			if( owner != null && owner.Length > 0 )
-				writer.WriteLine( "<dd><a class=\"jump\" href=\"" + "class_" + owner + ".html\">" + owner + "クラス</a>のメソッド</dd>" );
-			else
-				writer.WriteLine( "<dd>グローバルメソッド</dd>" );
+			if( ev ) {
+				if( owner != null && owner.Length > 0 )
+					writer.WriteLine( "<dd><a class=\"jump\" href=\"" + "class_" + owner + ".html\">" + owner + "クラス</a>のイベント</dd>" );
+				else
+					writer.WriteLine( "<dd>グローバルイベント</dd>" );
+			} else {
+				if( owner != null && owner.Length > 0 )
+					writer.WriteLine( "<dd><a class=\"jump\" href=\"" + "class_" + owner + ".html\">" + owner + "クラス</a>のメソッド</dd>" );
+				else
+					writer.WriteLine( "<dd>グローバルメソッド</dd>" );
+			}
 			writer.WriteLine( "<dt>構文</dt>" );
 			writer.Write( "<dd><span class=\"funcdecl\">" + Name + "(" );
 			if( Arguments != null ) {

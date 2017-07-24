@@ -94,6 +94,9 @@ namespace TJS2 {
 				case 'w':
 					if( "while".Equals(str) ) return Token.T_WHILE;
 					break;
+				case 'e':
+					if( "event".Equals( str ) ) return Token.T_EVENT;
+					break;
 				}
 				break;
 			case 6:

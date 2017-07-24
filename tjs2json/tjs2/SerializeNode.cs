@@ -71,9 +71,11 @@ namespace TJS2 {
 			Class,
 			Var,
 			Const,
+			Event,
 		}
 		public const string TYPE_ROOT = "root";
 		public const string TYPE_FUNCTION = "function";
+		public const string TYPE_EVENT = "event";
 		public const string TYPE_PROPERTY = "property";
 		public const string TYPE_CLASS = "class";
 		public const string TYPE_VAR = "var";
@@ -85,6 +87,7 @@ namespace TJS2 {
 				string name = TypeName;
 				if( TYPE_ROOT.Equals( name ) ) return NodeType.Root;
 				else if( TYPE_FUNCTION.Equals( name ) ) return NodeType.Function;
+				else if( TYPE_EVENT.Equals( name ) ) return NodeType.Event;
 				else if( TYPE_PROPERTY.Equals( name ) ) return NodeType.Property;
 				else if( TYPE_CLASS.Equals( name ) ) return NodeType.Class;
 				else if( TYPE_VAR.Equals( name ) ) return NodeType.Var;
@@ -98,6 +101,9 @@ namespace TJS2 {
 						break;
 					case NodeType.Function:
 						TypeName = TYPE_FUNCTION;
+						break;
+					case NodeType.Event:
+						TypeName = TYPE_EVENT;
 						break;
 					case NodeType.Property:
 						TypeName = TYPE_PROPERTY;
@@ -150,6 +156,9 @@ namespace TJS2 {
 					break;
 				case Token.T_FUNCTION:
 					sn.Type = NodeType.Function;
+					break;
+				case Token.T_EVENT:
+					sn.Type = NodeType.Event;
 					break;
 				case Token.T_PROPERTY:
 					sn.Type = NodeType.Property;

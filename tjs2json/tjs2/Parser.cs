@@ -27,7 +27,7 @@ namespace TJS2 {
 			public ScriptNode( int type, string name, string comment ) {
 				Child = null;
 				Args = null;
-				if( type == Token.T_FUNCTION ) {
+				if( type == Token.T_FUNCTION || type == Token.T_EVENT) {
 					Args = new List<string>();
 				} else if( type == Token.T_CLASS || type == 0 ) {
 					Child = new List<ScriptNode>();
@@ -90,6 +90,7 @@ namespace TJS2 {
 				if( tokens_.Count > 1 ) {
 					int token = tokens_[1].Token;
 					if( token == Token.T_FUNCTION ||
+						token == Token.T_EVENT ||
 						token == Token.T_PROPERTY ||
 						token == Token.T_CLASS ||
 						token == Token.T_VAR ||
@@ -122,7 +123,7 @@ namespace TJS2 {
 								node.Push( n );
 								currentNode = n;
 							}
-							if( type == Token.T_FUNCTION ) {
+							if( type == Token.T_FUNCTION || type == Token.T_EVENT) {
 								// 関数なので引数をチェックする
 								i++;
 								if( i < tokens_.Count ) {
@@ -166,6 +167,9 @@ namespace TJS2 {
 						break;
 					case Token.T_FUNCTION:
 						type = Token.T_FUNCTION;
+						break;
+					case Token.T_EVENT:
+						type = Token.T_EVENT;
 						break;
 					case Token.T_PROPERTY:
 						type = Token.T_PROPERTY;
@@ -221,6 +225,9 @@ namespace TJS2 {
 				case Token.T_FUNCTION:
 					writer.WriteLine( "\"function\"," );
 					break;
+				case Token.T_EVENT:
+					writer.WriteLine( "\"event\"," );
+					break;
 				case Token.T_PROPERTY:
 					writer.WriteLine( "\"property\"," );
 					break;
@@ -237,7 +244,7 @@ namespace TJS2 {
 					writer.WriteLine( "\"unknown\"," );
 					break;
 			}
-			if( node.Type == Token.T_FUNCTION && node .Args != null && node.Args.Count > 0 ) {
+			if( ( node.Type == Token.T_FUNCTION || node.Type == Token.T_EVENT ) && node.Args != null && node.Args.Count > 0 ) {
 				writer.WriteLine( "\"arguments\":[" );
 				for( int i = 0; i < node.Args.Count; i++ ) {
 					string arg = node.Args[i];
