@@ -1643,7 +1643,7 @@ namespace TJS2 {
 							throw new CompileException( Error.PPError, mCurrent );
 						}
 					}
-				} catch( CompileException e ) {
+				} catch( CompileException /*e*/ ) {
 					// mBlock.error( e.getMessage() );
 					return 0;
 				}

@@ -16,6 +16,17 @@ namespace apijsontohtml {
 		public string Description { get; set; }
 	}
 	[DataContract]
+	class FunctionArg {
+		[DataMember( Name = "name" )]
+		public string Name { get; set; }
+
+		[DataMember( Name = "type" )]
+		public string Type { get; set; }
+
+		[DataMember( Name = "default" )]
+		public string Default { get; set; }
+	}
+	[DataContract]
 	class ScriptComment {
 		[DataMember( Name = "raw" )]
 		public string Raw { get; set; }
@@ -98,7 +109,7 @@ namespace apijsontohtml {
 		public ScriptNode() {
 			TypeName = "unknown";
 			Name = "";
-			Arguments = new List<string>();
+			Arguments = new List<FunctionArg>();
 			Comment = new ScriptComment();
 			Members = new List<ScriptNode>();
 		}
@@ -110,7 +121,10 @@ namespace apijsontohtml {
 		public string Name { get; set; }
 
 		[DataMember( Name = "arguments" )]
-		public List<string> Arguments { get; set; }
+		public List<FunctionArg> Arguments { get; set; }
+
+		[DataMember( Name = "returnType" )]
+		public string ReturnType { get; set; }
 
 		[DataMember( Name = "comment" )]
 		public ScriptComment Comment { get; set; }
@@ -289,13 +303,19 @@ namespace apijsontohtml {
 			writer.WriteLine( "<dl>" );
 			if( constructorCount > 0 ) {
 				writer.WriteLine( "<dt>コンストラクタ</dt>" );
-				for( var i = 0; i < constructorCount; i++ ) {
-					if( i != 0 ) {
-						writer.WriteLine( "<dd><a class=\"jump\" href=\"" + "func_" + Name + "_" + Name + "_" + i +".html\">" + Name + "</a></dd>" );
-					} else {
-						writer.WriteLine( "<dd><a class=\"jump\" href=\"" + "func_" + Name + "_" + Name + ".html\">" + Name + "</a></dd>" );
+				writer.WriteLine( "<dd>" );
+				var i = 0;
+				foreach( ScriptNode n in Members ) {
+					if( Name.Equals( n.Name ) ) {
+						if( i != 0 ) {
+							writer.WriteLine( "<a class=\"jump\" href=\"" + "func_" + Name + "_" + Name + "_" + i + ".html\">" + Name + "</a> (" + removeReturn( n.Comment.Summary ) + " )<br />" );
+						} else {
+							writer.WriteLine( "<a class=\"jump\" href=\"" + "func_" + Name + "_" + Name + ".html\">" + Name + "</a> (" + removeReturn( n.Comment.Summary ) + " )<br />" );
+						}
+						i++;
 					}
 				}
+				writer.WriteLine( "</dd>" );
 			}
 			writer.WriteLine( "<dt>メソッド</dt>" );
 			writer.WriteLine( "<dd>" );
@@ -364,7 +384,11 @@ namespace apijsontohtml {
 				writer.WriteLine( "<dd>グローバルプロパティ</dd>" );
 			writer.WriteLine( "<dt>説明</dt>" );
 			//writer.WriteLine( "<dd>" + returnToBr(Comment.Description) + "</dd>" );
-			writer.WriteLine( "<dd>" + Markdown.Transform( returnToCRLF(Comment.Description) ) + "</dd>" );
+			writer.WriteLine( "<dd>" + Markdown.Transform( returnToCRLF( Comment.Description ) ) + "</dd>" );
+			if( Comment.See != null && Comment.See.Length > 0 ) {
+				writer.WriteLine( "<dt>参照</dt>" );
+				writer.WriteLine( "<dd>" + Markdown.Transform( returnToCRLF( Comment.See ) ) + "</dd>" );
+			}
 			writer.WriteLine( "</dl>" );
 			writer.WriteLine( "</div>" );
 			writer.WriteLine( "</body>" );
@@ -421,13 +445,23 @@ namespace apijsontohtml {
 			writer.Write( "<dd><span class=\"funcdecl\">" + Name + "(" );
 			if( Arguments != null ) {
 				for( int i = 0; i < Arguments.Count; i++ ) {
-					writer.Write( "<span class=\"arg\">" + Arguments[i] + "</span>" );
+					writer.Write( "<span class=\"arg\">" + Arguments[i].Name + "</span>" );
+					if( Arguments[i].Type != null ) {
+						writer.Write( ":" + Arguments[i].Type );
+					}
+					if( Arguments[i].Default != null ) {
+						writer.Write( "<span class=\"defarg\">=<span class=\"defargval\">" + Arguments[i].Default + "</span></span>" );
+					}
 					if( ( i + 1 ) != Arguments.Count ) {
 						writer.Write( ", " );
 					}
 				}
 			}
-			writer.WriteLine( ")</span></dd>" );
+			if( ReturnType != null ) {
+				writer.WriteLine( ") :" + ReturnType + "</span></dd>" );
+			} else {
+				writer.WriteLine( ")</span></dd>" );
+			}
 			writer.WriteLine( "<dt>引数</dt>" );
 			writer.WriteLine( "<dd><table rules=\"all\" frame=\"box\" cellpadding=\"3\" summary=\"" + Name + "の引数\">" );
 			if( Comment.Params != null ) {

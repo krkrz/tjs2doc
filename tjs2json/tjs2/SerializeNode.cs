@@ -25,6 +25,26 @@ namespace TJS2 {
 		}
 	}
 	[DataContract]
+	class FunctionArg {
+		[DataMember( Name = "name" )]
+		public string Name { get; set; }
+
+		[DataMember( Name = "type" )]
+		public string Type { get; set; }
+
+		[DataMember( Name = "default" )]
+		public string Default { get; set; }
+
+		public FunctionArg() {
+			Name = Type = Default = null;
+		}
+		public FunctionArg( string name, string type, string defaultValue ) {
+			Name = name;
+			Type = type;
+			Default = defaultValue;
+		}
+	}
+	[DataContract]
 	class ScriptComment {
 		[DataMember( Name = "raw" )]
 		public string Raw { get; set; }
@@ -127,7 +147,7 @@ namespace TJS2 {
 		public SerializeNode() {
 			TypeName = "unknown";
 			Name = null;
-			Arguments = new List<string>();
+			Arguments = new List<FunctionArg>();
 			Comment = new ScriptComment();
 			Members = new List<SerializeNode>();
 		}
@@ -139,7 +159,10 @@ namespace TJS2 {
 		public string Name { get; set; }
 
 		[DataMember( Name = "arguments" )]
-		public List<string> Arguments { get; set; }
+		public List<FunctionArg> Arguments { get; set; }
+
+		[DataMember( Name = "returnType" )]
+		public string ReturnType { get; set; }
 
 		[DataMember( Name = "comment" )]
 		public ScriptComment Comment { get; set; }
@@ -178,9 +201,12 @@ namespace TJS2 {
 			}
 			sn.Name = node.Name;
 			if( node.Args != null && node.Args.Count > 0 ) {
-				foreach( string name in node.Args ) {
-					sn.Arguments.Add( name );
+				foreach( var name in node.Args ) {
+					sn.Arguments.Add( new FunctionArg( name.Name, name.Type, name.DefaultValue ) );
 				}
+			}
+			if( node.ReturnType != null ) {
+				sn.ReturnType = node.ReturnType;
 			}
 			string comment = node.Comment;
 			if( comment != null ) {

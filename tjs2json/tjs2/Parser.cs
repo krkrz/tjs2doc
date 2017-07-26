@@ -18,17 +18,26 @@ namespace TJS2 {
 				Value = value;
 			}
 		}
+		public class FunctionArg {
+			public string Name;
+			public String Type;
+			public String DefaultValue;
+			public FunctionArg( string name ) {
+				Name = name;
+			}
+		}
 		public class ScriptNode {
 			public int Type;			// class, function, property, var
 			public string Comment;
 			public string Name;
-			public List<string> Args;	// for function
+			public List<FunctionArg> Args;	// for function
 			public List<ScriptNode> Child;
+			public string ReturnType;	// for function
 			public ScriptNode( int type, string name, string comment ) {
 				Child = null;
 				Args = null;
 				if( type == Token.T_FUNCTION || type == Token.T_EVENT) {
-					Args = new List<string>();
+					Args = new List<FunctionArg>();
 				} else if( type == Token.T_CLASS || type == 0 ) {
 					Child = new List<ScriptNode>();
 				}
@@ -55,6 +64,14 @@ namespace TJS2 {
 					} else if( token == Token.T_COMMENT ) {
 						string comment = lex.getComment();
 						tokens_.Add( new TokenInfo( token, comment ) );
+					} else if( token == Token.T_CONSTVAL ) {
+						string name = null;
+						if( Object.ReferenceEquals( lex.getValue( lex.getValue() ).GetType(), typeof(VariantClosure) ) ) {
+							name = "null";
+						} else {
+							name = lex.getValue(lex.getValue()).ToString();
+						}
+						tokens_.Add( new TokenInfo( token, name ) );
 					} else {
 						// シンボル名とコメント本体のみ取得して、他は値無視
 						tokens_.Add( new TokenInfo( token, null ) );
@@ -146,22 +163,69 @@ namespace TJS2 {
 								// Token.T_OMIT ...
 								// * や初期値などは調べてない
 								bool nextSymbol = true;
+								bool nextType = false;
+								bool nextDefault = false;
 								for( ; i < tokens_.Count; i++ ) {
 									token = tokens_[i];
 									if( token.Token == Token.T_RPARENTHESIS ) {	// )
 										break;
 									}
-									if( nextSymbol && token.Token == Token.T_SYMBOL ) {
-										n.Args.Add( (string)token.Value );
-										nextSymbol = false;
+									if( token.Token == Token.T_SYMBOL ) {
+										if( nextSymbol ) {
+											n.Args.Add( new FunctionArg( (string)token.Value ) );
+											nextSymbol = false;
+										} else if( nextType ) {
+											n.Args.Last().Type = (string)token.Value;
+											nextType = false;
+										} else if( nextDefault ) {
+											if( tokens_[i + 1].Token == Token.T_DOT && tokens_[i + 2].Token == Token.T_SYMBOL ) {
+												n.Args.Last().DefaultValue = (string)token.Value + "." + (string)tokens_[i + 2].Value;
+												i += 2;
+											} else {
+												n.Args.Last().DefaultValue = (string)token.Value;
+											}
+											nextDefault = false;
+										}
 									} else if( token.Token == Token.T_OMIT ) {
-										n.Args.Add( "..." );
+										n.Args.Add( new FunctionArg("...") );
 										nextSymbol = false;
 									} else if( token.Token == Token.T_COMMA ) {
 										nextSymbol = true;
+									} else if( token.Token == Token.T_COLON ) {
+										nextType = true;
+									} else if( token.Token == Token.T_EQUAL ) {
+										nextDefault = true;
+									} else if( token.Token == Token.T_INT || token.Token == Token.T_REAL || token.Token == Token.T_STRING || token.Token == Token.T_OCTET ) {
+										if( nextType ) {
+											n.Args.Last().Type = Token.getTokenString( token.Token );
+											nextType = false;
+										}
+									} else if( token.Token == Token.T_CONSTVAL ) {
+										if( nextDefault ) {
+											n.Args.Last().DefaultValue = token.Value.ToString();
+											nextDefault = false;
+										}
+									} else if( token.Token == Token.T_TRUE || token.Token == Token.T_FALSE || token.Token == Token.T_NULL || token.Token == Token.T_VOID ) {
+										if( nextDefault ) {
+											n.Args.Last().DefaultValue = Token.getTokenString( token.Token );
+											nextDefault = false;
+										}
 									}
 								}
-
+								i++;
+								if( tokens_[i].Token == Token.T_COLON ) {
+									i++;
+									token = tokens_[i];
+									if( token.Token == Token.T_SYMBOL ) {
+										n.ReturnType = (string)token.Value;
+										i++;
+									} else if( token.Token == Token.T_INT || token.Token == Token.T_REAL || token.Token == Token.T_STRING || token.Token == Token.T_OCTET ) {
+										n.ReturnType = Token.getTokenString( token.Token );
+										i++;
+									}
+								} else {
+									i--;
+								}
 							}
 						}
 						break;
@@ -247,11 +311,11 @@ namespace TJS2 {
 			if( ( node.Type == Token.T_FUNCTION || node.Type == Token.T_EVENT ) && node.Args != null && node.Args.Count > 0 ) {
 				writer.WriteLine( "\"arguments\":[" );
 				for( int i = 0; i < node.Args.Count; i++ ) {
-					string arg = node.Args[i];
+					FunctionArg arg = node.Args[i];
 					if( ( i + 1 ) != node.Args.Count ) {
-						writer.WriteLine( "\"" + arg + "\"," );
+						writer.WriteLine( "\"" + arg.Name + "\"," );
 					} else {
-						writer.WriteLine( "\"" + arg + "\"" );
+						writer.WriteLine( "\"" + arg.Name + "\"" );
 					}
 				}
 				if( node.Comment != null || node.Child != null ) {
