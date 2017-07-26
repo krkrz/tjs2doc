@@ -36,8 +36,23 @@ namespace apijsontohtml {
 						}
 					}
 				}
+				string about = title;
+				if( System.IO.File.Exists( "about.md" ) ) {
+					System.IO.StreamReader sr = new System.IO.StreamReader( "about.md", System.Text.Encoding.GetEncoding( "UTF-8" ) );
+					about = sr.ReadToEnd();
+					sr.Close();
+				}
 				if( root.Members != null && root.Members.Count > 0 ) {
-					root.WriteMain( title );
+					var option = new MarkdownSharp.MarkdownOptions();
+					option.AutoHyperlink = true;
+					option.AutoNewLines = true;
+					option.EmptyElementSuffix = " />";
+					option.EncodeProblemUrlCharacters = true;
+					option.LinkEmails = true;
+					option.StrictBoldItalic = false;
+					ScriptNode.Markdown = new MarkdownSharp.Markdown( option );
+					//var html = markdown.Transform( text );
+					root.WriteMain( title, about );
 				}
 				/*
 				Stream stream = new FileStream( args[0], FileMode.Open );

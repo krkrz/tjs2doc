@@ -62,6 +62,7 @@ namespace apijsontohtml {
 	}
 	[DataContract]
 	class ScriptNode {
+		public static MarkdownSharp.Markdown Markdown;
 		public enum NodeType {
 			Unknown,
 			Root,
@@ -131,40 +132,44 @@ namespace apijsontohtml {
 				}
 			}
 		}
-		public void WriteHtml( string owner ) {
+		public void WriteHtml( ScriptNode parent, string owner, int constructorCount = 0 ) {
 			switch( Type ) {
 				case NodeType.Root:
 				case NodeType.Unknown:
 					// WriteRootHtml( ref writer );
 					foreach( ScriptNode n in Members ) {
-						n.WriteHtml( Name );
+						n.WriteHtml( this, Name );
 					}
 					break;
 				case NodeType.Function:
-					WriteFunctionHtml( owner, false );
+					WriteFunctionHtml( parent, owner, false, constructorCount );
 					break;
 				case NodeType.Event:
-					WriteFunctionHtml( owner, true );
+					WriteFunctionHtml( parent, owner, true );
 					break;
 				case NodeType.Property:
 					WritePropertyHtml( owner );
 					break;
 				case NodeType.Class:
 					WriteClassHtml( owner );
+					int constructCount = 0;
 					foreach( ScriptNode n in Members ) {
 						if( n.Type == NodeType.Class ) {
 							if( owner != null && owner.Length > 0 )
-								n.WriteHtml( owner + "." + Name );
+								n.WriteHtml( this, owner + "." + Name );
 							else
-								n.WriteHtml( Name );
+								n.WriteHtml( this, Name );
 						} else {
-							n.WriteHtml( Name );
+							n.WriteHtml( this, Name, constructCount );
+							if( n.Type == NodeType.Function && n.Name == Name ) {
+								constructCount++;
+							}
 						}
 					}
 					break;
 			}
 		}
-		public void WriteMain( string title ) {
+		public void WriteMain( string title, string about ) {
 			StreamWriter writer = new StreamWriter( "index.html", false, Encoding.UTF8 );
 			WriteHtmlHeader( ref writer, title );
 			writer.WriteLine( "<frameset cols=\"230,*\" title=\"index\">" );
@@ -178,13 +183,14 @@ namespace apijsontohtml {
 			writer = new StreamWriter( "about.html", false, Encoding.UTF8 );
 			WriteHtmlHeader( ref writer, title );
 			writer.WriteLine( "<body>" );
+			writer.WriteLine( Markdown.Transform( about ) );
 			writer.WriteLine( "</body>" );
 			writer.WriteLine( "</html>" );
 			writer.Close();
 
 			WriteIndex();
 
-			WriteHtml( "" );
+			WriteHtml( this, "" );
 		}
 		private void WriteIndex() {
 			StreamWriter writer = new StreamWriter( "frame_index.html", false, Encoding.UTF8 );
@@ -255,11 +261,17 @@ namespace apijsontohtml {
 			}
 			return str;
 		}
-		public void WriteClassHtml( string owner ) {
-			bool hasConstructor = false;
+		private string returnToCRLF( string str ) {
+			if( str != null ) {
+				str = str.Replace( "\\n", "\r\n" );
+			}
+			return str;
+		}
+		public int WriteClassHtml( string owner ) {
+			int constructorCount = 0;
 			foreach( ScriptNode n in Members ) {
 				if( Name.Equals( n.Name ) ) {
-					hasConstructor = true;
+					constructorCount++;
 				}
 			}
 			Members.Sort( ( a, b ) => String.Compare(a.Name,b.Name) );
@@ -272,18 +284,35 @@ namespace apijsontohtml {
 			WriteHtmlHeader( ref writer, Name + " - " + removeReturn(Comment.Summary) );
 			writer.WriteLine( "<body>" );
 			writer.WriteLine( "<h1><a name=\"top\" id=\"top\">" + Name + "</a></h1>" );
-			writer.WriteLine( "<div class=\"para\">" + returnToBr( Comment.Description ) + "</div>" );
+			writer.WriteLine( "<div class=\"para\">" + Markdown.Transform( returnToCRLF( Comment.Description ) ) + "</div>" );
 			writer.WriteLine( "<h1>メンバ</h1><div class=\"para\">" );
 			writer.WriteLine( "<dl>" );
-			if( hasConstructor ) {
+			if( constructorCount > 0 ) {
 				writer.WriteLine( "<dt>コンストラクタ</dt>" );
-				writer.WriteLine( "<dd><a class=\"jump\" href=\"" + "func_" + Name + "_" + Name + ".html\">" + Name + "</a></dd>" );
+				for( var i = 0; i < constructorCount; i++ ) {
+					if( i != 0 ) {
+						writer.WriteLine( "<dd><a class=\"jump\" href=\"" + "func_" + Name + "_" + Name + "_" + i +".html\">" + Name + "</a></dd>" );
+					} else {
+						writer.WriteLine( "<dd><a class=\"jump\" href=\"" + "func_" + Name + "_" + Name + ".html\">" + Name + "</a></dd>" );
+					}
+				}
 			}
 			writer.WriteLine( "<dt>メソッド</dt>" );
 			writer.WriteLine( "<dd>" );
 			foreach( ScriptNode n in Members ) {
 				if( n.Type == NodeType.Function && Name.Equals( n.Name ) == false ) {
-					writer.WriteLine( "<a class=\"jump\" href=\"" + "func_" + Name + "_" + n.Name + ".html\">" + n.Name + "</a> (" + removeReturn( n.Comment.Summary ) + " )<br />" );
+					int index = 0;
+					for( var i = 0; i < Members.Count; i++ ) {
+						if( Members[i].Type == NodeType.Function && Members[i].Name.Equals( n.Name ) && Members[i] != n ) {
+							index++;
+						}
+						if( Members[i] == n ) break;
+					}
+					if( index > 0 ) {
+						writer.WriteLine( "<a class=\"jump\" href=\"" + "func_" + Name + "_" + n.Name + "_" + index + ".html\">" + n.Name + "</a> (" + removeReturn( n.Comment.Summary ) + " )<br />" );
+					} else {
+						writer.WriteLine( "<a class=\"jump\" href=\"" + "func_" + Name + "_" + n.Name + ".html\">" + n.Name + "</a> (" + removeReturn( n.Comment.Summary ) + " )<br />" );
+					}
 				}
 			}
 			writer.WriteLine( "</dd>" );
@@ -318,6 +347,7 @@ namespace apijsontohtml {
 			writer.WriteLine( "</body>" );
 			writer.WriteLine( "</html>" );
 			writer.Close();
+			return constructorCount;
 		}
 		public void WritePropertyHtml( string owner ) {
 			StreamWriter writer = new StreamWriter( "prop_" + owner + "_" + Name + ".html", false, Encoding.UTF8 );
@@ -333,26 +363,48 @@ namespace apijsontohtml {
 			else
 				writer.WriteLine( "<dd>グローバルプロパティ</dd>" );
 			writer.WriteLine( "<dt>説明</dt>" );
-			writer.WriteLine( "<dd>" + returnToBr(Comment.Description) + "</dd>" );
+			//writer.WriteLine( "<dd>" + returnToBr(Comment.Description) + "</dd>" );
+			writer.WriteLine( "<dd>" + Markdown.Transform( returnToCRLF(Comment.Description) ) + "</dd>" );
 			writer.WriteLine( "</dl>" );
 			writer.WriteLine( "</div>" );
 			writer.WriteLine( "</body>" );
 			writer.WriteLine( "</html>" );
 			writer.Close();
 		}
-		public void WriteFunctionHtml( string owner, bool ev = false ) {
+		public void WriteFunctionHtml( ScriptNode parent, string owner, bool ev = false, int index = 0 ) {
 			StreamWriter writer;
 			if( ev ) {
 				writer = new StreamWriter( "event_" + owner + "_" + Name + ".html", false, Encoding.UTF8 );
 			} else {
-				writer = new StreamWriter( "func_" + owner + "_" + Name + ".html", false, Encoding.UTF8 );
+				if( parent.Name.Equals( Name ) ) {
+					// constructor
+					if( index > 0 ) {
+						writer = new StreamWriter( "func_" + owner + "_" + Name + "_" + index + ".html", false, Encoding.UTF8 );
+					} else {
+						writer = new StreamWriter( "func_" + owner + "_" + Name + ".html", false, Encoding.UTF8 );
+					}
+				} else {
+					int funcindex = 0;
+					for( var i = 0; i < parent.Members.Count; i++ ) {
+						if( parent.Members[i].Type == NodeType.Function && parent.Members[i].Name.Equals( Name ) && parent.Members[i] != this ) {
+							funcindex++;
+						}
+						if( parent.Members[i] == this ) break;
+					}
+					if( funcindex > 0 ) {
+						writer = new StreamWriter( "func_" + owner + "_" + Name + "_" + funcindex + ".html", false, Encoding.UTF8 );
+					} else {
+						writer = new StreamWriter( "func_" + owner + "_" + Name + ".html", false, Encoding.UTF8 );
+					}
+				}
 			}
 			WriteHtmlHeader( ref writer, Name + " - " + removeReturn(Comment.Summary) );
 			writer.WriteLine( "<body>");
 			writer.WriteLine( "<h1><span class=\"fheader\"><a name=\"top\" id=\"top\">" + owner + "." + Name + "</a></span></h1><div class=\"para\">" );
 			writer.WriteLine( "<dl>" );
 			writer.WriteLine( "<dt>機能/意味</dt>" );
-			writer.WriteLine( "<dd>" + removeReturn(Comment.Summary) + "</dd>" );
+			//writer.WriteLine( "<dd>" + removeReturn(Comment.Summary) + "</dd>" );
+			writer.WriteLine( "<dd>" + Markdown.Transform( returnToCRLF(Comment.Summary) ) + "</dd>" );
 			writer.WriteLine( "<dt>タイプ</dt>" );
 			if( ev ) {
 				if( owner != null && owner.Length > 0 )
@@ -382,18 +434,24 @@ namespace apijsontohtml {
 				for( int i = 0; i < Comment.Params.Count; i++ ) {
 					FunctionParam p = Comment.Params[i];
 					writer.WriteLine( "<tr><td valign=\"top\"><span class=\"argname\">" + p.Name + "</span></td>" );
-					writer.WriteLine( "<td>" + returnToBr(p.Description) + "</td></tr>" );
+					//writer.WriteLine( "<td>" + returnToBr(p.Description) + "</td></tr>" );
+					writer.WriteLine( "<td>" + Markdown.Transform( returnToCRLF(p.Description) ) + "</td></tr>" );
 				}
 			}
 			writer.WriteLine( "</table></dd>" );
 			writer.WriteLine( "<dt>戻り値</dt>" );
 			if( Comment.Return != null && Comment.Return.Length > 0 ) {
-				writer.WriteLine( "<dd>"+Comment.Return+"</dd>" );
+				writer.WriteLine( "<dd>" + Markdown.Transform( returnToCRLF(Comment.Return) ) + "</dd>" );
 			} else {
 				writer.WriteLine( "<dd>なし (void)</dd>" );
 			}
 			writer.WriteLine( "<dt>説明</dt>" );
-			writer.WriteLine( "<dd>" + returnToBr(Comment.Description) + "</dd>" );
+			//writer.WriteLine( "<dd>" + returnToBr(Comment.Description) + "</dd>" );
+			writer.WriteLine( "<dd>" + Markdown.Transform( returnToCRLF( Comment.Description ) ) + "</dd>" );
+			if( Comment.See != null && Comment.See.Length > 0 ) {
+				writer.WriteLine( "<dt>参照</dt>" );
+				writer.WriteLine( "<dd>" + Markdown.Transform( returnToCRLF( Comment.See)  ) + "</dd>" );
+			}
 			writer.WriteLine( "</dl>" );
 			writer.WriteLine( "</div>" );
 			writer.WriteLine( "</body>" );

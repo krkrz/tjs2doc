@@ -429,8 +429,16 @@ namespace TJS2 {
 					if( ( match = Regex.Match( line, "^@param[ \t]*([^ \t]+)[ \t]+(.+)" ) ) != Match.Empty ) {
 						string name  = match.Groups[1].Value;
 						string body = match.Groups[2].Value;
-						current = new CommentNode( CommentType.PARAM, name, body );
-						result.Add( current );
+						if( current.Type == CommentType.PARAM && current.Name == name ) {
+							if( current.Body.Length > 0 ) {
+								current.Body += "\\n" + body;
+							} else {
+								current.Body = body;
+							}
+						} else {
+							current = new CommentNode( CommentType.PARAM, name, body );
+							result.Add( current );
+						}
 					} else {
 						string body = Regex.Replace( line, "^@param[ \t]*", "" ); // 先頭部分を削除
 						current = new CommentNode( CommentType.PARAM, body );
@@ -458,8 +466,16 @@ namespace TJS2 {
 					result.Add( current );
 				} else if( Regex.Match( line, "^@description" ).Success ) {
 					string body = Regex.Replace( line, "^@description[ \t]*", "" );
-					current = new CommentNode( CommentType.DESCRIPTION, body );
-					result.Add( current );
+					if( current.Type != CommentType.DESCRIPTION ) {
+						current = new CommentNode( CommentType.DESCRIPTION, body );
+						result.Add( current );
+					} else {
+						if( current.Body.Length > 0 ) {
+							current.Body += "\\n" + body;
+						} else {
+							current.Body = body;
+						}
+					}
 				} else {
 					// previous type
 					if( current.Body.Length > 0 ) {
