@@ -141,6 +141,18 @@ namespace apijsontohtml {
 				int index = Members.FindIndex( s => s.Name == name );
 				if( index >= 0 ) {
 					Members[index].margeNode( n );
+					if( n.Type == NodeType.Class && Members[index].Type == NodeType.Class ) {
+						if( Members[index].Comment.Summary != null )
+							Members[index].Comment.Summary += n.Comment.Summary;
+						else
+							Members[index].Comment.Summary = n.Comment.Summary;
+
+						if( Members[index].Comment.Description != null )
+							Members[index].Comment.Description += n.Comment.Description;
+						else
+							Members[index].Comment.Description = n.Comment.Description;
+
+					}
 				} else {
 					Members.Add( n );
 				}
