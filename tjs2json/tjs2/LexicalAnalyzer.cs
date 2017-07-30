@@ -1,8 +1,12 @@
-﻿using System;
+﻿// ドキュメント用にtrue/null等分かりやすいように文字列で取得するようにした
+#define DOCUMENT_PARSER
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Collections;
 using System.IO;
+
 
 namespace TJS2 {
 	sealed class LexicalAnalyzer {
@@ -1497,19 +1501,39 @@ namespace TJS2 {
 			}
 			switch( retnum ) {
 			case Token.T_FALSE:
+#if DOCUMENT_PARSER
+				mValue = putValue( "false" );
+#else
 				mValue = putValue( 0 );
+#endif
 				return Token.T_CONSTVAL;
 			case Token.T_NULL:
+#if DOCUMENT_PARSER
+				mValue = putValue( "null" );
+#else
 				mValue = putValue( new VariantClosure(null) );
+#endif
 				return Token.T_CONSTVAL;
 			case Token.T_TRUE:
+#if DOCUMENT_PARSER
+				mValue = putValue( "true" );
+#else
 				mValue = putValue( 1 );
+#endif
 				return Token.T_CONSTVAL;
 			case Token.T_NAN:
+#if DOCUMENT_PARSER
+				mValue = putValue( "NaN" );
+#else
 				mValue = putValue( Double.NaN );
+#endif
 				return Token.T_CONSTVAL;
 			case Token.T_INFINITY:
+#if DOCUMENT_PARSER
+				mValue = putValue( "Infinity" );
+#else
 				mValue = putValue( Double.PositiveInfinity );
+#endif
 				return Token.T_CONSTVAL;
 			}
 			return retnum;
