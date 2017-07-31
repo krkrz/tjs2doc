@@ -47,7 +47,7 @@ namespace apijsontohtml {
 		public string Version { get; set; }
 
 		[DataMember( Name = "see" )]
-		public string See { get; set; }
+		public List<string> See { get; set; }
 
 		[DataMember( Name = "description" )]
 		public string Description { get; set; }
@@ -65,7 +65,7 @@ namespace apijsontohtml {
 			Throw = "";
 			Author = "";
 			Version = "";
-			See = "";
+			See = new List<string>();
 			Description = "";
 			Unknown = "";
 			Params = new List<FunctionParam>();
@@ -74,6 +74,7 @@ namespace apijsontohtml {
 	[DataContract]
 	class ScriptNode {
 		public static MarkdownSharp.Markdown Markdown;
+		public static ScriptNode Root;
 		public enum NodeType {
 			Unknown,
 			Root,
@@ -280,6 +281,13 @@ namespace apijsontohtml {
 			}
 			return str;
 		}
+		private string eraseReturn( string str ) {
+			if( str != null ) {
+				str = str.Replace( "\\n", "" );
+				str = str.Replace( "\n", "" );
+			}
+			return str;
+		}
 		private string returnToBr( string str ) {
 			if( str != null ) {
 				str = str.Replace( "\n", "<br />" );
@@ -397,9 +405,19 @@ namespace apijsontohtml {
 			writer.WriteLine( "<dt>説明</dt>" );
 			//writer.WriteLine( "<dd>" + returnToBr(Comment.Description) + "</dd>" );
 			writer.WriteLine( "<dd>" + Markdown.Transform( returnToCRLF( Comment.Description ) ) + "</dd>" );
-			if( Comment.See != null && Comment.See.Length > 0 ) {
+			if( Comment.See != null && Comment.See.Count > 0 ) {
 				writer.WriteLine( "<dt>参照</dt>" );
-				writer.WriteLine( "<dd>" + Markdown.Transform( returnToCRLF( Comment.See ) ) + "</dd>" );
+				writer.WriteLine( "<dd>" );
+				for( int i = 0; i < Comment.See.Count; i++ ) {
+					var see = eraseReturn( Comment.See[i] );
+					var url = FindMemberUrl( Root, see );
+					if( url != null ) {
+						writer.WriteLine( "<a class=\"jump\" href=\"" + url + "\">" + see + "</a><br />" );
+					} else {
+						writer.WriteLine( see + "<br />\n" );
+					}
+				}
+				writer.WriteLine( "</dd>" );
 			}
 			writer.WriteLine( "</dl>" );
 			writer.WriteLine( "</div>" );
@@ -494,9 +512,19 @@ namespace apijsontohtml {
 			writer.WriteLine( "<dt>説明</dt>" );
 			//writer.WriteLine( "<dd>" + returnToBr(Comment.Description) + "</dd>" );
 			writer.WriteLine( "<dd>" + Markdown.Transform( returnToCRLF( Comment.Description ) ) + "</dd>" );
-			if( Comment.See != null && Comment.See.Length > 0 ) {
+			if( Comment.See != null && Comment.See.Count > 0 ) {
 				writer.WriteLine( "<dt>参照</dt>" );
-				writer.WriteLine( "<dd>" + Markdown.Transform( returnToCRLF( Comment.See)  ) + "</dd>" );
+				writer.WriteLine( "<dd>" );
+				for( int i = 0; i < Comment.See.Count; i++ ) {
+					var see = eraseReturn( Comment.See[i] );
+					var url = FindMemberUrl( Root, see );
+					if( url != null ) {
+						writer.WriteLine( "<a class=\"jump\" href=\"" + url + "\">" + see + "</a><br />" );
+					} else {
+						writer.WriteLine( see + "<br />\n" );
+					}
+				}
+				writer.WriteLine( "</dd>" );
 			}
 			writer.WriteLine( "</dl>" );
 			writer.WriteLine( "</div>" );
@@ -511,6 +539,34 @@ namespace apijsontohtml {
 			writer.WriteLine( "<link href=\"api.css\" type=\"text/css\" rel=\"stylesheet\" title=\"APIリファレンス用標準スタイル\" />" );
 			writer.WriteLine( "<title>" + title + "</title>" );
 			writer.WriteLine( "</head>" );
+		}
+		private string FindMemberUrl( ScriptNode root, string name ) {
+			string[] words = name.Split( '.' );
+			ScriptNode owner = root;
+			for( var i = 0; i < words.Count(); i++ ) {
+				owner = FindMember( owner, words[i] );
+				if( owner == null ) break;
+			}
+			if( owner == null ) return null;
+			else {
+				switch( owner.Type ) {
+					case NodeType.Event:
+						return "event_" + name.Replace( '.', '_' ) + ".html";
+					case NodeType.Function:
+						return "func_" + name.Replace( '.', '_' ) + ".html";
+					case NodeType.Property:
+						return "prop_" + name.Replace( '.', '_' ) + ".html";
+					default:
+						return null;
+				}
+			}
+		}
+		private ScriptNode FindMember( ScriptNode owner, string name ) {
+			int index = owner.Members.FindIndex( s => s.Name == name );
+			if( index >= 0 )
+				return owner.Members[index];
+			else
+				return null;
 		}
 	}
 }

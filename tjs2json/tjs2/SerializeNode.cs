@@ -65,7 +65,7 @@ namespace TJS2 {
 		public string Version { get; set; }
 
 		[DataMember( Name = "see" )]
-		public string See { get; set; }
+		public List<string> See { get; set; }
 
 		[DataMember( Name = "description" )]
 		public string Description { get; set; }
@@ -77,8 +77,9 @@ namespace TJS2 {
 		public List<FunctionParam> Params { get; set; }
 
 		public ScriptComment() {
-			Raw = Summary = Return = Throw = Author = Version = See = Description = Unknown = null;
+			Raw = Summary = Return = Throw = Author = Version = Description = Unknown = null;
 			Params = new List<FunctionParam>();
+			See = new List<string>();
 		}
 	}
 	[DataContract]
@@ -234,7 +235,7 @@ namespace TJS2 {
 							sn.Comment.Version = body;
 							break;
 						case Parser.CommentType.SEE:
-							sn.Comment.See = body;
+							sn.Comment.See.Add( body );
 							break;
 						case Parser.CommentType.DESCRIPTION:
 							sn.Comment.Description = body;

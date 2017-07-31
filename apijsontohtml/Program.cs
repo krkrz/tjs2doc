@@ -51,7 +51,7 @@ namespace apijsontohtml {
 					option.LinkEmails = true;
 					option.StrictBoldItalic = false;
 					ScriptNode.Markdown = new MarkdownSharp.Markdown( option );
-					//var html = markdown.Transform( text );
+					ScriptNode.Root = root;
 					root.WriteMain( title, about );
 				}
 				/*
